@@ -76,6 +76,8 @@ impl<'lua> FromLua<'lua> for LuauCompileOptions {
 pub struct LuauLoadOptions<'lua> {
     pub(crate) debug_name: String,
     pub(crate) environment: Option<LuaTable<'lua>>,
+    pub(crate) codegen_enabled: bool,
+    pub(crate) inject_globals: bool,
 }
 
 impl Default for LuauLoadOptions<'_> {
@@ -83,6 +85,8 @@ impl Default for LuauLoadOptions<'_> {
         Self {
             debug_name: DEFAULT_DEBUG_NAME.to_string(),
             environment: None,
+            codegen_enabled: false,
+            inject_globals: true,
         }
     }
 }
@@ -102,11 +106,21 @@ impl<'lua> FromLua<'lua> for LuauLoadOptions<'lua> {
                     options.environment = Some(environment);
                 }
 
+                if let Some(codegen_enabled) = t.get("codegenEnabled")? {
+                    options.codegen_enabled = codegen_enabled;
+                }
+
+                if let Some(inject_globals) = t.get("injectGlobals")? {
+                    options.inject_globals = inject_globals;
+                }
+
                 options
             }
             LuaValue::String(s) => Self {
                 debug_name: s.to_string_lossy().to_string(),
                 environment: None,
+                codegen_enabled: false,
+                inject_globals: true,
             },
             _ => {
                 return Err(LuaError::FromLuaConversionError {
