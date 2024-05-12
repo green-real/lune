@@ -33,21 +33,14 @@ fn load_source<'lua>(
     lua: &'lua Lua,
     (source, options): (LuaString<'lua>, LuauLoadOptions),
 ) -> LuaResult<LuaFunction<'lua>> {
-    let chunk = lua.load(source.as_bytes()).set_name(options.debug_name);
+    let mut chunk = lua.load(source.as_bytes()).set_name(options.debug_name);
     let env_changed = options.environment.is_some();
-    
-    // Enable JIT if codegen is enabled and the environment hasn't changed, otherwise disable JIT since it'll fall back anyways
-    lua.enable_jit(options.codegen_enabled && !env_changed);
-    let function = chunk.into_function()?;
-    // Default back to enabling JIT for future loads
-    lua.enable_jit(true);
 
     if let Some(custom_environment) = options.environment {
         let environment = lua.create_table()?;
 
         // Inject all globals into the environment
         if options.inject_globals {
-            
             for pair in lua.globals().pairs() {
                 let (key, value): (LuaValue, LuaValue) = pair?;
                 environment.set(key, value)?;
@@ -56,6 +49,10 @@ fn load_source<'lua>(
             if let Some(global_metatable) = lua.globals().get_metatable() {
                 environment.set_metatable(Some(global_metatable));
             }
+        
+        // Since we don't need to set the global metatable, we can just set a custom metatable if it exists
+        } else if let Some(custom_metatable) = custom_environment.get_metatable() {
+            environment.set_metatable(Some(custom_metatable));
         }
 
         // Inject the custom environment
@@ -64,8 +61,13 @@ fn load_source<'lua>(
             environment.set(key, value)?;
         }
 
-        function.set_environment(environment)?;
+        chunk = chunk.set_environment(environment);
     }
+    
+    // Enable JIT if codegen is enabled and the environment hasn't changed, otherwise disable JIT since it'll fall back anyways
+    lua.enable_jit(options.codegen_enabled && !env_changed);
+    let function = chunk.into_function()?;
+    lua.enable_jit(true);
 
     Ok(function)
 }

@@ -55,6 +55,7 @@ create_tests! {
     fs_metadata: "fs/metadata",
     fs_move: "fs/move",
 
+    luau_load_safeenv: "luau/load_safeenv",
     luau_compile: "luau/compile",
     luau_load: "luau/load",
     luau_options: "luau/options",
